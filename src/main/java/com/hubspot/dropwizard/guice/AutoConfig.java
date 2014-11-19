@@ -5,9 +5,12 @@ import io.dropwizard.lifecycle.Managed;
 import io.dropwizard.servlets.tasks.Task;
 import io.dropwizard.setup.Bootstrap;
 import io.dropwizard.setup.Environment;
-import com.google.common.base.Preconditions;
-import com.google.inject.Injector;
-import com.sun.jersey.spi.inject.InjectableProvider;
+
+import java.util.Set;
+
+import javax.ws.rs.Path;
+import javax.ws.rs.ext.Provider;
+
 import org.reflections.Reflections;
 import org.reflections.scanners.SubTypesScanner;
 import org.reflections.scanners.TypeAnnotationsScanner;
@@ -17,9 +20,10 @@ import org.reflections.util.FilterBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.ws.rs.Path;
-import javax.ws.rs.ext.Provider;
-import java.util.Set;
+import com.google.common.base.Preconditions;
+import com.google.inject.AbstractModule;
+import com.google.inject.Injector;
+import com.sun.jersey.spi.inject.InjectableProvider;
 
 public class AutoConfig {
 
@@ -53,6 +57,12 @@ public class AutoConfig {
 
 	public void initialize(Bootstrap<?> bootstrap, Injector injector) {
 		addBundles(bootstrap, injector);
+	}
+
+	Set<Class<? extends AbstractModule>> getModules() {
+		Set<Class<? extends AbstractModule>> moduleClasses = reflections
+				.getSubTypesOf(AbstractModule.class);
+		return moduleClasses;
 	}
 
 	private void addManaged(Environment environment, Injector injector) {

@@ -1,7 +1,10 @@
 package com.hubspot.dropwizard.guice;
 
+import java.util.Set;
+
 import io.dropwizard.Configuration;
 import io.dropwizard.setup.Environment;
+
 import com.google.inject.AbstractModule;
 import com.google.inject.Provider;
 import com.google.inject.Provides;
@@ -12,9 +15,11 @@ public class DropwizardEnvironmentModule<T extends Configuration> extends Abstra
 	private T configuration;
 	private Environment environment;
 	private Class<? super T> configurationClass;
+	AutoConfig autoConfig;
 
-	public DropwizardEnvironmentModule(Class<T> configurationClass) {
+	public DropwizardEnvironmentModule(Class<T> configurationClass, AutoConfig autoconfig) {
 		this.configurationClass = configurationClass;
+		this.autoConfig = autoconfig;
 	}
 
 	@Override
@@ -22,7 +27,10 @@ public class DropwizardEnvironmentModule<T extends Configuration> extends Abstra
 		Provider<T> provider = new CustomConfigurationProvider();
 		bind(configurationClass).toProvider(provider);
 		if (configurationClass != Configuration.class) {
-			bind(Configuration.class).toProvider(provider);
+			Class[] interfaces = this.configurationClass.getInterfaces();
+			for (int i = 0; i < interfaces.length; i++) {
+				bind(interfaces[i]).toProvider(provider);
+			}
 		}
 	}
 

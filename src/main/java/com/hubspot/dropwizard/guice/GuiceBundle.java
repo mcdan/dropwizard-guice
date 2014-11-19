@@ -4,10 +4,12 @@ import io.dropwizard.Configuration;
 import io.dropwizard.ConfiguredBundle;
 import io.dropwizard.setup.Bootstrap;
 import io.dropwizard.setup.Environment;
+
 import com.google.common.base.Function;
 import com.google.common.base.Optional;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
+import com.google.inject.AbstractModule;
 import com.google.inject.Guice;
 import com.google.inject.Injector;
 import com.google.inject.Module;
@@ -15,11 +17,14 @@ import com.google.inject.Stage;
 import com.google.inject.servlet.GuiceFilter;
 import com.sun.jersey.api.core.ResourceConfig;
 import com.sun.jersey.spi.container.servlet.ServletContainer;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nullable;
+
 import java.util.List;
+import java.util.Set;
 
 public class GuiceBundle<T extends Configuration> implements ConfiguredBundle<T> {
 
@@ -73,7 +78,9 @@ public class GuiceBundle<T extends Configuration> implements ConfiguredBundle<T>
 
     private GuiceBundle(Stage stage, AutoConfig autoConfig, List<Module> modules, Optional<Class<T>> configurationClass) {
         Preconditions.checkNotNull(modules);
-        Preconditions.checkArgument(!modules.isEmpty());
+        if (autoConfig == null) {
+            Preconditions.checkArgument(!modules.isEmpty());        	
+        }
         Preconditions.checkNotNull(stage);
         this.modules = modules;
         this.autoConfig = autoConfig;
@@ -86,13 +93,24 @@ public class GuiceBundle<T extends Configuration> implements ConfiguredBundle<T>
         container = new GuiceContainer();
         JerseyContainerModule jerseyContainerModule = new JerseyContainerModule(container);
         if (configurationClass.isPresent()) {
-            dropwizardEnvironmentModule = new DropwizardEnvironmentModule<T>(configurationClass.get());
+            dropwizardEnvironmentModule = new DropwizardEnvironmentModule<T>(configurationClass.get(), autoConfig);
         } else {
-            dropwizardEnvironmentModule = new DropwizardEnvironmentModule<Configuration>(Configuration.class);
+            dropwizardEnvironmentModule = new DropwizardEnvironmentModule<Configuration>(Configuration.class, autoConfig);
         }
         modules.add(jerseyContainerModule);
         modules.add(dropwizardEnvironmentModule);
-
+        
+        if (autoConfig != null) {
+        	for (Class<? extends AbstractModule> m :  autoConfig.getModules()) {
+        		try {
+					modules.add(m.newInstance());
+				} catch (final InstantiationException e) {
+					logger.error("Could not create module:", e);
+				} catch (IllegalAccessException e) {
+					logger.error("Could not create module:", e);
+				}
+        	}
+        }
         initInjector();
 
         if (autoConfig != null) {
